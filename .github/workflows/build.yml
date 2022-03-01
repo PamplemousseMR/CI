@@ -10,7 +10,7 @@ jobs:
 
     strategy:
       matrix:
-        name: [=ubuntu_18-04_g++8]
+        name: [ubuntu_18-04_g++8]
 
         include:
         - name: ubuntu_18-04_g++8
