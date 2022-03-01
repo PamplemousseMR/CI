@@ -1,0 +1,64 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.OS }}
+
+    strategy:
+      matrix:
+        name: [ubuntu_18-04_g++8]
+
+        include:
+        - name: ubuntu_18-04_g++8
+          OS: ubuntu-18.04
+          COMPILER: g++-8
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Package
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+              sudo apt-get update
+              sudo apt-get --assume-yes install ${{ matrix.COMPILER }}
+              sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/${{ matrix.COMPILER }} 50
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+              echo "$RUNNER_OS not supported"
+              exit 1
+          else
+              brew install ${{ matrix.INSTALL }}
+          fi
+
+      - name: Configure ModuleA
+        run: |
+          cmake -B ${{github.workspace}}/build_modulea_debug -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/install_modulea_debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=${{ matrix.COMPILER }} moduleA
+          cmake -B ${{github.workspace}}/build_modulea_release -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/install_modulea_release -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${{ matrix.COMPILER }} moduleA
+
+      - name: Build ModuleA
+        run: |
+          cmake --build ${{github.workspace}}/build_modulea_debug
+          cmake --build ${{github.workspace}}/build_modulea_release
+
+      - name: Install ModuleA
+        run: |
+          cmake --install ${{github.workspace}}/build_modulea_debug
+          cmake --install ${{github.workspace}}/build_modulea_release
+
+      - name: Configure Executable
+        run: |
+          cmake -B ${{github.workspace}}/build_debug -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/install_debug -DCMAKE_PREFIX_PATH=${{github.workspace}}/install_modulea_debug -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=${{ matrix.COMPILER }} executable
+          cmake -B ${{github.workspace}}/build_release -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/install_release -DCMAKE_PREFIX_PATH=${{github.workspace}}/install_modulea_release -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=${{ matrix.COMPILER }} executable
+
+      - name: Build Executable
+        run: |
+          cmake --build ${{github.workspace}}/build_debug
+          cmake --build ${{github.workspace}}/build_release
+
+      - name: Install Executable
+        run: |
+          cmake --install ${{github.workspace}}/build_debug
+          cmake --install ${{github.workspace}}/build_release
